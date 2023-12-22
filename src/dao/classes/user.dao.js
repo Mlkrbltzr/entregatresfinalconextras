@@ -1,56 +1,11 @@
-/*import userModel from "../models/user.model.js";
-
-export default class User {
-    getUsers = async () => {
-        try {
-            let users = await userModel.find()
-            return users
-        } catch (error) {
-            console.log(error)
-            return null
-        }
-    }
-
-    getUserById = async (id) => {
-        try {
-            let user = await userModel.findOne({ _id: id })
-            return user
-        } catch (error) {
-            console.log(error)
-            return null
-        }
-    }
-
-    saveUser = async (user) => {
-        try {
-            let result = await userModel.create(user)
-            return result
-        } catch (error) {
-            console.log(error)
-            return null
-        }
-    }
-
-    updateUser = async (id, user) => {
-        try {
-            let result = await userModel.updateOne({ _id: id }, { $set: user })
-            return result
-        } catch (error) {
-            return null
-        }
-    }
-}*/
-// user.dao.js
-import userModel from "../models/user.model.js";
 
 class UserDAO {
-  // Funciones originales del usuario
   async getUsers() {
     try {
       let users = await userModel.find();
       return users;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return null;
     }
   }
@@ -60,7 +15,7 @@ class UserDAO {
       let user = await userModel.findOne({ _id: id });
       return user;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return null;
     }
   }
@@ -70,7 +25,7 @@ class UserDAO {
       let result = await userModel.create(user);
       return result;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return null;
     }
   }
@@ -80,11 +35,11 @@ class UserDAO {
       let result = await userModel.updateOne({ _id: id }, { $set: user });
       return result;
     } catch (error) {
+      console.error(error);
       return null;
     }
   }
 
-  // Nueva función para agregar al carrito
   async addToCart(userId, productId, quantity) {
     try {
       const user = await userModel.findById(userId);
@@ -102,9 +57,26 @@ class UserDAO {
       }
 
       await user.save();
-
       return user;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  // Nueva función para actualizar el carrito del usuario
+  async updateUserCart(userId, failedProductIds) {
+    try {
+      // Implementa la lógica para actualizar el carrito del usuario en la base de datos
+      // Puedes usar la conexión a la base de datos (userModel) u otros métodos según tu implementación
+      // Ejemplo:
+      await userModel.updateOne(
+        { _id: userId },
+        { $addToSet: { 'cart.failedProductIds': { $each: failedProductIds } } }
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error(error);
       throw error;
     }
   }

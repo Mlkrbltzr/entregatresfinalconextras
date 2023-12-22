@@ -1,21 +1,3 @@
-/*import mongoose from "mongoose";
-
-
-const collection = "Users"
-const schema = new mongoose.Schema({
-    name: String,
-    email: String,
-    role: String,
-    orders: [
-        {
-            type: mongoose.SchemaTypes.ObjectId,
-            ref: "Orders"
-        }
-    ]
-})
-
-const userModel = mongoose.model(collection, schema)
-export default userModel*/
 import mongoose from "mongoose";
 
 const userCollection = "Users";
@@ -37,5 +19,9 @@ const userSchema = new mongoose.Schema({
   ],
 });
 
-const userModel = mongoose.model(userCollection, userSchema);
-export default userModel;
+// Verifica si el modelo ya está definido
+const UserModel = mongoose.models.Users
+  ? mongoose.model("Users")  // Si ya está definido, úsalo
+  : mongoose.model(userCollection, userSchema);  // Si no, defínelo
+
+export default UserModel;
