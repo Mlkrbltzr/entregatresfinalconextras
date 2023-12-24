@@ -1,150 +1,296 @@
-// Importa las clases necesarias
-import UserDAO from '../DAO/classes/user.dao.js';
-import UserDTO from '../DAO/DTO/users.DTO.js';
+// users.controller.js
+import { userModel } from "../DAO/mongo/models/user.model.js";
+import { cartModel } from "../DAO/mongo/models/cart.model.js";
+import { messageModel } from "../DAO/mongo/models/messages.model.js";
+import { createHash, isValidPassword, generateToken, generateTokenRecovery } from '../utils.js';
+import UserDTO from "../DAO/DTO/users.dto.js";
+import bcrypt from "bcrypt";
+import { transporter } from "../routes/mail.router.js";
+import UserDao from "../DAO/mongo/users.mongo.js";
+import logger from "../logger.js";
 
-// Crea una instancia del servicio de usuario
-const userService = new UserDAO();
 
-/**
- * Obtiene todos los usuarios.
- */
-export const getUsers = async (req, res) => {
+const userDao = new UserDao();
+
+// Función para obtener un usuario por correo electrónico
+async function getUserByEmail(email) {
   try {
-    // Obtiene la lista de todos los usuarios
-    const result = await userService.getUsers();
-    // Envía la respuesta con el estado 'success' y los resultados obtenidos
-    res.send({ status: 'success', result: result });
+    const user = await userModel.findOne({ email });
+    return user;
   } catch (error) {
-    // En caso de error, envía una respuesta con el estado 'error'
     console.error(error);
-    res.status(500).send({ status: 'error', error: 'Error fetching users' });
+    throw new Error("Error al obtener usuario por correo electrónico");
   }
-};
+}
 
-/**
- * Obtiene un usuario por su ID.
- * @param {string} req.params.uid - ID del usuario.
- */
-export const getUserById = async (req, res) => {
+// Función para obtener todos los usuarios
+async function getAllUsers(req, res) {
+  try {
+    const users = await userModel.find();
+    res.send({ result: "success", payload: users });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener usuarios" });
+  }
+}
+
+
+// Función para obtener un usuario por ID
+async function getUserById(req, res) {
   const { uid } = req.params;
   try {
-    // Busca un usuario por su ID
-    const user = await userService.getUserById(uid);
-    // Envía la respuesta con el estado 'success' y el usuario encontrado
-    res.send({ status: 'success', result: user });
-  } catch (error) {
-    // En caso de error, envía una respuesta con el estado 'error'
-    console.error(error);
-    res.status(500).send({ status: 'error', error: 'Error fetching user by ID' });
-  }
-};
-
-/**
- * Guarda un nuevo usuario.
- * @param {object} req.body - Datos del usuario.
- */
-export const saveUser = async (req, res) => {
-  try {
-    // Obtiene los datos del usuario desde el cuerpo de la solicitud
-    const userData = req.body;
-    // Crea un DTO de usuario a partir de los datos recibidos
-    const userDTO = new UserDTO(userData);
-    // Realiza validaciones adicionales si es necesario
-    // userDTO.validate();
-    // Guarda el nuevo usuario
-    const result = await userService.saveUser(userDTO);
-    // Envía la respuesta con el estado 'success' y el resultado de la operación
-    res.send({ status: 'success', result });
-  } catch (error) {
-    // En caso de error, envía una respuesta con el estado 'error'
-    console.error(error);
-    res.status(400).send({ status: 'error', error: error.message });
-  }
-};
-
-/**
- * Agrega un producto al carrito de un usuario.
- * @param {object} req.body - Datos de la solicitud.
- * @param {string} req.body.userId - ID del usuario.
- * @param {string} req.body.productId - ID del producto.
- * @param {number} req.body.quantity - Cantidad del producto.
- */
-export const addToCart = async (req, res) => {
-  // Obtiene los datos del cuerpo de la solicitud
-  const { userId, productId, quantity } = req.body;
-
-  // Función processPurchase movida aquí
-  const processPurchase = async (cart, user) => {
-    // Lógica para procesar la compra y verificar el stock (implementa según tus necesidades)
-    // ...
-
-    // Ejemplo: actualiza el stock de los productos en la base de datos
-    // await ProductService.updateStock(cart.products);
-
-    // Devuelve información sobre la compra (éxito o falla)
-    return {
-      success: true, // o false si la compra no se completó
-      failedProductIds: [/* IDs de los productos que no pudieron procesarse */],
-      // Otra información necesaria para el ticket
-    };
-  };
-
-  try {
-    // Verifica si se está realizando una acción específica ("addToCart")
-    if (userId === "addToCart") {
-      // Realiza la lógica específica para el caso "addToCart"
-      // Puedes crear un carrito temporal o realizar alguna otra acción
-      // ...
-
-      // Envía una respuesta exitosa con el resultado específico para "addToCart"
-      res.send({ status: 'success', result: {} });
-    } else {
-      // Busca el usuario por ID y agrega el producto al carrito
-      const user = await userService.addToCart(userId, productId, quantity);
-
-      // Si el usuario existe, también procesa la compra
-      if (user) {
-        // Llama a la función processPurchase para procesar la compra
-        const purchaseData = await processPurchase(user.cart, user);
-
-        // Actualiza el carrito del usuario con los productos que no pudieron comprarse
-        await userService.updateUserCart(userId, purchaseData.failedProductIds);
-
-        // Envía una respuesta exitosa con el resultado de la compra
-        res.send({ status: 'success', result: purchaseData });
-      } else {
-        // En caso de que el usuario no se encuentre, envía un error 404
-        res.status(404).send({ status: 'error', error: 'User not found' });
-      }
+    const user = await userModel.findById(uid);
+    if (!user) {
+      return res.status(404).json({ status: "error", error: "Usuario no encontrado" });
     }
+    res.json({ status: "success", payload: user });
   } catch (error) {
-    // En caso de error, envía una respuesta con el estado 'error'
     console.error(error);
-    res.status(500).send({ status: 'error', error: error.message });
+    res.status(500).json({ status: "error", error: "Error al obtener el usuario por ID" });
   }
-};
+}
 
-/**
- * Obtener información del usuario actual.
- */
-export const getCurrentUser = async (req, res) => {
+// Función para crear un nuevo usuario
+async function createUser(req, res) {
+  const { nombre, apellido, email, password } = req.body;
+  if (!nombre || !apellido || !email || !password) {
+    return res.status(400).json({ status: "error", error: "Faltan datos" });
+  }
+
   try {
-    // Obtén el DTO del usuario desde la estrategia "current"
-    const userDTO = req.user;
+    const usuario = await userModel.create({ nombre, apellido, email, password });
+    res.json({ message: "Usuario creado con éxito", user: usuario });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al crear el usuario" });
+  }
+}
 
-    // Crea un DTO simplificado con la información necesaria
-    const simplifiedUserDTO = {
-      first_name: userDTO.first_name,
-      email: userDTO.email,
-      rol: userDTO.rol,
-      // ... otras propiedades necesarias
+// Función para registrar un usuario y un mensaje
+async function registerUserAndMessage(req, res) {
+  const { nombre, apellido, email, password, message, rol } = req.body;
+  if (!nombre || !apellido || !email || !password) {
+    return res.status(400).json({ status: "error", error: "Faltan datos" });
+  }
+
+  try {
+    const existUser = await userModel.findOne({ email });
+    if (existUser) {
+      return res.status(400).json({ status: "error", error: "El correo ya existe" });
+    }
+
+    const newCart = await cartModel.create({ user: null, products: [], total: 0 });
+    const newUser = new userModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
+    newUser.user = newUser._id;
+    await newUser.save();
+
+    newCart.user = newUser._id;
+    await newCart.save();
+
+    if (message) {
+      const newMessage = new messageModel({ user: newUser._id, message });
+      await newMessage.save();
+    }
+
+    res.redirect("/login"); // no funciona
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al guardar usuario y mensaje" });
+  }
+}
+
+// Función para iniciar sesión de usuario
+async function loginUser(req, res) {
+  const { email, password } = req.body;
+  try {
+    const user = await userModel.findOne({ email });
+
+    if (!user || !isValidPassword(user, password)) {
+      logger.error("Usuario o contraseña incorrecta");
+      return res.status(401).json({ message: "Usuario o contraseña incorrecta" });
+    }
+
+    const token = generateToken({ email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol });
+    res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+
+    const userCart = await cartModel.findById(user.cartId);
+
+    logger.info("Inicio de sesión exitoso para el usuario: " + user.email);
+    logger.info("Token generado para el usuario: " + token);
+    logger.info("rol del usuario: " + user.rol);
+
+    res.status(200).json({ token, userCart });
+  } catch (error) {
+    res.status(500).json({ error: "Error al ingresar " + error.message });
+  }
+}
+
+// Función para obtener información del usuario
+async function getUserInfo(req, res) {
+  const user = req.user;
+  res.json({ user });
+}
+
+// Función para cerrar sesión de usuario
+async function logoutUser(req, res) {
+  req.session.destroy((error) => {
+    if (error) {
+      return res.json({ status: "Error al desconectarse", body: error });
+    }
+    res.redirect("../../login");
+  });
+}
+
+// Función para actualizar un usuario
+async function updateUser(req, res) {
+  const { uid } = req.params;
+  const userToReplace = req.body;
+  try {
+    const updateFields = { ...userToReplace };
+    delete updateFields._id;
+
+    const userUpdate = await userModel.findByIdAndUpdate(uid, updateFields, { new: true });
+
+    if (!userUpdate) {
+      logger.error("Usuario no encontrado al intentar actualizar");
+      return res.status(404).json({ status: "error", error: "Usuario no encontrado" });
+    }
+
+    logger.info("Usuario actualizado correctamente:", userUpdate);
+    res.json({ status: "success", message: "Usuario actualizado", user: userUpdate });
+  } catch (error) {
+    logger.error("Error al actualizar el usuario:", error);
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al actualizar el usuario" });
+  }
+}
+
+// Función para actualizar la contraseña por correo electrónico
+async function updatePasswordByEmail(req, res) {
+  const { email, newPassword } = req.body;
+
+  try {
+    const user = await userDao.getUserByEmail(email);
+
+    if (!user) {
+      return res.status(400).json({ error: "No se encontró el usuario" });
+    }
+
+    // Comparar la nueva contraseña con la anterior
+    const matchOldPassword = await bcrypt.compare(newPassword, user.password);
+    console.log(matchOldPassword);
+    if (matchOldPassword) {
+      return res.status(400).json({ error: "La nueva contraseña no puede ser igual a la anterior" });
+    }
+
+    const hashedPassword = createHash(newPassword); /* await bcrypt.hash(newPassword, saltRounds); */
+
+    const userUpdate = await userDao.updatePassword(user._id, hashedPassword);
+    if (!userUpdate) {
+      return res.status(500).json({ error: "Error al actualizar la contraseña" });
+    }
+
+    return res.status(200).json({ message: "Contraseña actualizada correctamente" });
+  } catch (error) {
+    console.error(`Error al buscar al usuario o actualizar la contraseña: ${error}`);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+// Función para eliminar un usuario
+async function deleteUser(req, res) {
+  const { uid } = req.params;
+  try {
+    await userModel.findByIdAndDelete(uid);
+    res.json({ message: "Usuario eliminado" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al eliminar el usuario" });
+  }
+}
+
+// Función para recuperar contraseña por correo
+async function recuperacionCorreo(req, res) {
+  const { email } = req.body; // Suponiendo que el campo de correo electrónico se envía desde el formulario de login
+
+  try {
+    const usuario = await userDao.getUserByEmail(email);
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Generar token para expirar correo de reestablecimiento de contraseña
+    const token = generateTokenRecovery({ email: usuario.email });
+    if (!token) {
+      return res.status(500).json({ message: 'Error al generar el token.' });
+    }
+
+    logger.info("token de recoverypass:" + token);
+    // Construir el enlace de recuperación
+    const recoveryLink = `http://localhost:8080/reset_password/${token}`;
+
+    // Contenido del email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Recuperación de contraseña',
+      text: `Hola ${usuario.nombre},\n\nPara restablecer tu contraseña, haz clic en el siguiente enlace:\n\n${recoveryLink}\n\nSi no solicitaste un cambio de contraseña, ignora este mensaje.`,
     };
 
-    // Envía el DTO simplificado en la respuesta
-    res.send({ status: 'success', result: simplifiedUserDTO });
+    // Enviar el correo
+    transporter.sendMail(mailOptions, (error) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ message: 'Hubo un error al enviar el correo.' });
+      }
+      return res.json({ message: 'Se ha enviado un enlace de recuperación a tu correo electrónico.' });
+    });
   } catch (error) {
-    // En caso de error, envía una respuesta con el estado 'error'
     console.error(error);
-    res.status(500).send({ status: 'error', error: 'Error fetching current user' });
+    return res.status(500).json({ message: 'Error al procesar la solicitud.' });
   }
+}
+
+// Función para cambiar el rol de un usuario
+async function changeRol(req, res) {
+  const { uid } = req.params;
+  try {
+    const user = await userDao.getUserById(uid);
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Cambiar el rol según la lógica deseada
+    if (user.rol === "user") {
+      user.rol = "premium";
+    } else if (user.rol === "premium") {
+      user.rol = "user";
+    }
+
+    const updatedUser = await user.save(); // Guardar el usuario con el nuevo rol
+
+    res.json({ message: "Rol de usuario actualizado", user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al cambiar el rol del usuario" });
+  }
+}
+
+// Exportar todas las funciones
+export {
+  registerUserAndMessage,
+  getUserById,
+  loginUser,
+  getUserInfo,
+  logoutUser,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  createUser,
+  getUserByEmail,
+  recuperacionCorreo,
+  updatePasswordByEmail,
+  changeRol,
+  userDao,
 };

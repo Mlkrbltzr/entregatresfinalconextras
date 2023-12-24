@@ -1,18 +1,40 @@
+//passport.config.js
 import GitHubStrategy from "passport-github2";
-import { createHash, isValidPassword } from "../utils.js";
 import passport from "passport";
 import local from "passport-local";
-import UsersDao from "../DAO/classes/user.dao.js"
-import UserDTO from "../DAO/DTO/users.DTO.js";
+import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
+import { userModel } from "../DAO/mongo/models/user.model.js";
+import * as utils from "../utils.js";
+import UserDTO from "../DAO/DTO/users.dto.js";
+
+
+const cookieExtractor = (req) => {
+  let token = null;
+  if (req && req.cookies) {
+    token = req.cookies["token"];
+  }
+  return token;
+};
 
 const localStrategy = local.Strategy;
 
-const UsersDaoInstance = new UsersDao();
-
+// Función para inicializar Passport
 const initializePassport = () => {
-  // ... Código existente para 'formRegister', 'serializeUser', 'deserializeUser', y 'login'
+  // Serialización y deserialización de usuarios para la sesión
+  passport.serializeUser((user, done) => {
+    done(null, user.id);
+  });
 
-  // Estrategia de autentificación de Passport-GitHub (GitHubStrategy)
+  passport.deserializeUser(async (email, done) => {
+    try {
+      const user = await userModel.findOne({ email });
+      done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  });
+
+  // Estrategia de autenticación de GitHub
   passport.use(
     "github",
     new GitHubStrategy(
@@ -24,23 +46,20 @@ const initializePassport = () => {
       async (accessToken, refreshToken, profile, done) => {
         try {
           console.log(profile);
-
-          // Verificación del Usuario
-          let user = await UsersDaoInstance.findEmail({ email: profile.__json.email });
+          // Verificación del usuario en la base de datos
+          let user = await userModel.findOne({ email: profile._json.email });
           if (!user) {
-            // Creación de un Nuevo Usuario
-            const newUserDTO = new UserDTO({
-              first_name: profile.__json.name,
-              last_name: "github",
-              age: 20,
-              email: profile.__json.email,
-              rol: "admin",
-              password: "",
-            });
+            // Creación de un nuevo usuario si no existe
+            let newUser = {
+              nombre: profile._json.name,
+              email: profile._json.email,
+              isGithubAuth: true,
+            };
 
-            let result = await UsersDaoInstance.addUser(newUserDTO);
+            let result = await userModel.create(newUser);
             done(null, result);
           } else {
+            // Usuario existente, se pasa al siguiente middleware
             done(null, user);
           }
         } catch (error) {
@@ -49,6 +68,87 @@ const initializePassport = () => {
       }
     )
   );
+
+  // Estrategia de autenticación JWT
+  passport.use(
+    "jwt",
+    new JwtStrategy(
+      {
+        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        secretOrKey: PRIVATE_KEY,
+      },
+      (payload, done) => {
+        console.log("JWT Strategy - Payload:", payload);
+        // Verificación del token mediante la función authToken
+        authToken(payload, (error, user) => {
+          if (error) {
+            return done(error, false);
+          }
+          if (user) {
+            // Si el token es válido, se pasa al siguiente middleware
+            console.log("JWT Strategy - User:", user);
+            return done(null, user);
+          } else {
+            // Token no válido, se niega el acceso
+            return done(null, false);
+          }
+        });
+      }
+    )
+  );
+
+  // Estrategia de autenticación JWT para la sesión actual
+  passport.use(
+    "current",
+    new JwtStrategy(
+      {
+        jwtFromRequest: ExtractJwt.fromExtractors([cookieExtractor]),
+        secretOrKey: PRIVATE_KEY,
+      },
+      async (payload, done) => {
+        try {
+          const user = await userModel.findOne({ email: payload.user.email });
+          if (!user) {
+            // Usuario no encontrado, se niega el acceso
+            console.log("akiii");
+            return done(null, false);
+          }
+
+          // Creación de un objeto UserDTO con la información necesaria
+          const userDTO = {
+            email: user.email,
+            nombre: user.nombre,
+            apellido: user.apellido,
+            carrito: user.cartId,
+            rol: user.rol,
+          };
+
+          // Se pasa al siguiente middleware con el objeto UserDTO
+          return done(null, userDTO);
+        } catch (err) {
+          return done(err, false);
+        }
+      }
+    )
+  );
 };
 
-export default initializePassport;
+// Middleware para verificar roles
+function checkRole(roles) {
+  return function (req, res, next) {
+    const user = req.user; // El objeto UserDTO almacenado por Passport en req.user
+
+    if (user && roles.includes(user.rol)) {
+      // El usuario tiene uno de los roles requeridos, permitir acceso a la ruta
+      next();
+    } else {
+      // Usuario no autorizado para acceder a esta ruta
+      res
+        .status(403)
+        .json({ message: "No tienes permisos para acceder a esta ruta." });
+    }
+  };
+}
+
+// Exporta las funciones de inicialización y verificación de roles
+export { initializePassport, checkRole  };

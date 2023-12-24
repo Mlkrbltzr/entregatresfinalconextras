@@ -1,122 +1,56 @@
+//carts.router.js
+import express from "express";
+import passport from "passport";
+import { initializePassport, checkRole } from "../config/passport.config.js";
+import cartsControllers from "../controllers/cart.controller.js";
 
-import { Router } from "express";
-import cartModel from "../dao/models/cart.model.js";
-import productModel from "../dao/models/products.model.js";
-import CartDao from "../dao/classes/cart.dao.js";
+const router = express.Router();
 
+// Inicializar la configuración de Passport
+initializePassport(passport);
 
+// Obtener un carrito por ID
+// router.get("/api/carts/:cid", cartsControllers.getCartById);
 
-const CartRouter = Router();
-const carts = new CartDao();
-const productsModel = new productModel();
+// Obtener todos los carritos
+router.get("/api/carts", cartsControllers.getAllCarts);
 
-// Ruta para agregar un producto a un carrito específico
-CartRouter.post('/:cartId/products/:productId', async (req, res) => {
-    const { cartId, productId } = req.params;
+// Crear un carrito
+router.post("/api/carts", cartsControllers.createCart);
 
-    // Verificar si el carrito existe
-    const cart = await carts.exist(cartId);
-    if (!cart) {
-        return res.status(404).json({ error: 'El carrito no existe' });
-    }
+// Agregar varios productos al carrito
+router.post(
+  "/api/carts/:cid/products",
+  passport.authenticate("current", { session: false }),
+  checkRole(["user", "premium"]),
+  cartsControllers.addProductsToCart
+);
 
-    // Verificar si el producto existe
-    const product = await productsModel.exist(productId);
-    if (!product) {
-        return res.status(404).json({ error: 'El producto no existe' });
-    }
+// Actualizar la cantidad de un producto en el carrito
+router.put("/api/carts/:cid/products/:pid", cartsControllers.updateProductQuantity);
 
-    // Comprobar si el producto ya está en el carrito
-    if (cart.products.some((prod) => prod.id === productId)) {
-        const existingProduct = cart.products.find((prod) => prod.id === productId);
-        existingProduct.quantity++;
-    } else {
-        // Agregar el producto al carrito
-        cart.products.push(productId);
+// Borrar un carrito específico
+router.delete("/api/deletecarts/:id", cartsControllers.deleteCartById);
 
-    }
+// Borrar todos los productos de un carrito
+router.delete("/api/deleteproductcarts/:cid", cartsControllers.deleteAllProductsInCart);
 
-    // Guardar el carrito actualizado en la base de datos
-    await cart.save();
+// Borrar un producto específico de un carrito específico
+router.delete("/api/carts/:cid/product/:pid", cartsControllers.deleteProductFromCart);
 
-    return res.status(200).json({ message: 'Producto agregado al carrito' });
-});
+// Realizar la compra total de los productos del carrito
+router.get(
+  "/api/carts/:cid/purchase",
+  passport.authenticate("current", { session: false }),
+  checkRole("user"),
+  cartsControllers.purchaseProducts
+);
 
+// Obtener el carrito del usuario
+router.get(
+  "/api/carts/getusercart",
+  passport.authenticate("current", { session: false }),
+  cartsControllers.getUserCart
+);
 
-// Ruta para crear un nuevo carrito
-CartRouter.post("/create", async (req, res) => {
-    try {
-        const newCart = new cartModel(); // Crea una nueva instancia de un carrito
-        await newCart.save(); // Guarda el carrito en la base de datos
-
-        res.status(201).json({ cartId: newCart._id }); // Devuelve el ID del carrito creado
-    } catch (error) {
-        res.status(500).json({ error: "No se pudo crear el carrito" });
-    }
-});
-
-// Ruta para agregar un carrito
-CartRouter.post("/addCart", async (req, res) => {
-    res.send(await carts.addCarts());
-});
-
-// Ruta para agregar productos a un carrito
-CartRouter.post("/addProduct", async (req, res) => {
-    const cartId = req.body.cartId; // Utiliza req.body para obtener los datos
-    const productId = req.body.productId;
-    const quantity = req.body.quantity;
-    res.send(await carts.addProductInCart(cartId, productId, quantity));
-});
-
-
-// GET api/carts/:cartId
-CartRouter.get('/:cartId', async (req, res) => {
-    const cartId = req.params.cartId;
-    try {
-        const cart = await cartModel.findById(cartId).populate('products');
-
-        if (!cart) {
-            return res.status(404).json({ error: 'El carrito no existe' });
-        }
-
-        const productsInCart = await carts.getProductsForCart(cart.products);
-
-        // Combina los detalles de los productos con el carrito
-        const cartWithProductDetails = {
-            cart: cart,
-            productsInCart: productsInCart
-        };
-
-        // Renderiza la vista con los detalles de los productos y el carrito
-        res.render('carrito', cartWithProductDetails);
-    } catch (error) {
-        res.status(500).json({ error: "No se pudo encontrar el carrito" });
-    }
-});
-
-// PUT api/carts/:cartId
-CartRouter.put('/:cartId', async (req, res) => {
-    // Actualiza el carrito con un arreglo de productos
-    const cartId = req.body.cartId;
-    const updatedProducts = req.body.products;
-    res.send(await carts.updateCartProducts(cartId, updatedProducts));
-});
-
-// PUT api/carts/:cartId/products/:productId
-CartRouter.put('/:cartId/products/:productId', async (req, res) => {
-    // Actualiza la cantidad de ejemplares del producto en el carrito
-    const cartId = req.body.cartId; // Utiliza req.body para obtener los datos
-    const productId = req.body.productId
-    const quantity = req.body.quantity;
-    res.send(await carts.updateProductQuantity(cartId, productId, quantity));
-});
-
-
-// DELETE api/carts/:cartId
-CartRouter.delete('/:cartId', async (req, res) => {
-    // Elimina todos los productos del carrito
-    const cartId = req.body.cartId
-    res.send(await carts.deleteCartProducts(cartId));
-});
-
-export default CartRouter;
+export default router;

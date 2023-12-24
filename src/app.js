@@ -1,30 +1,34 @@
+//app.js
 import express from 'express';
 import { engine } from 'express-handlebars';
-import mongoose from 'mongoose';
-import MongoStore from 'connect-mongo';
 import session from 'express-session';
 import passport from 'passport';
-import path from 'path';
-import utils from './utils.js';
+import MongoStore from 'connect-mongo';
 
+// Importaciones relacionadas con la base de datos
+import mongoose from 'mongoose';
 import config from './config/config.js';
-import usersDao from './DAO/classes/user.dao.js';
-import logger from './controllers/logger.controller.js';
-import initializaPassport from './config/passport.config.js';
 
-import CartDao from './DAO/classes/cart.dao.js';
-import ProductsDao from './DAO/classes/products.dao.js';
-import loggerRoutes from './routes/logger.router.js';
+// Otras importaciones
+import path from 'path';
+import logger from './logger.js';
+import { initializePassport } from './config/passport.config.js';  // Corrige el nombre de la importación
+import * as utils from './utils.js';  // Importa todas las utilidades desde utils.js
+
+// Rutas
 import userRouter from './routes/users.router.js';
-import CartRouter from './routes/carts.router.js';
-import productRouter from './routes/products.router.js';
-import jwtEstrategy from './routes/jwt.router.js';
-import ordersRouter from './routes/orders.router.js';
+import * as productRouter from './routes/products.router.js';
+import cartRouter from './routes/carts.router.js';
+import viewsRouter from './routes/views.router.js';
+import sessionRouter from './routes/session.router.js';
+import mailRouter from './routes/mail.router.js';
+import mockingproducts from './routes/mocking.router.js';
+
+
+
 
 const app = express();
 
-const product = new ProductsDao();
-const carts = new CartDao();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -70,13 +74,16 @@ mongoose.connect(config.mongoUrl)
 app.use('/', express.static(path.resolve(__dirname, 'public')));
 
 // Enrutadores
-app.use('/', loggerRoutes);
-app.use('/api/mockingproducts', userRouter);
+app.use('/api/cart', cartRouter);
 app.use('/api/products', productRouter);
-app.use('/api/carts', CartRouter);
-app.use('/api/sessions', userRouter);
-app.use('/api/jwt', jwtEstrategy);
-app.use('/api/orders', ordersRouter);
+app.use('/api/vista', viewsRouter);
+app.use('/api/user', userRouter);
+app.use('/api/session', sessionRouter);
+app.use('/api/mail', mailRouter);
+app.use('/api/mockingproducts', mockingproducts);
+
+
+
 
 // Motor de vistas Handlebars
 app.engine('handlebars', engine());
@@ -84,7 +91,7 @@ app.set('view engine', 'handlebars');
 app.set('views', path.resolve(__dirname, 'views'));
 
 // Definición de rutas
-app.get('/products', async (req, res) => {
+/*app.get('/products', async (req, res) => {
   if (!req.session.emailUsuario) {
     res.redirect('/login');
     return;
@@ -167,8 +174,9 @@ app.get('/logout', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
   logger.info(`Servidor corriendo en el puerto ${PORT}`);
 });
+*/
