@@ -4,6 +4,7 @@ import passport from "passport";
 import local from "passport-local";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import { userModel } from "../DAO/mongo/models/user.model.js";
+import { PRIVATE_KEY } from "../utils.js";
 import * as utils from "../utils.js";
 import UserDTO from "../DAO/DTO/users.dto.js";
 

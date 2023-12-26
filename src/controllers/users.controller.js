@@ -52,20 +52,25 @@ async function getUserById(req, res) {
 
 // Función para crear un nuevo usuario
 async function createUser(req, res) {
+  console.log('Recibiendo solicitud para crear usuario:', req.body);
+
   const { nombre, apellido, email, password } = req.body;
+  console.log('Datos del usuario:', { nombre, apellido, email, password });
+
   if (!nombre || !apellido || !email || !password) {
+    console.log('Faltan datos');
     return res.status(400).json({ status: "error", error: "Faltan datos" });
   }
 
   try {
     const usuario = await userModel.create({ nombre, apellido, email, password });
+    console.log('Usuario creado con éxito:', usuario);
     res.json({ message: "Usuario creado con éxito", user: usuario });
   } catch (error) {
-    console.error(error);
+    console.error('Error al crear el usuario:', error);
     res.status(500).json({ status: "error", error: "Error al crear el usuario" });
   }
 }
-
 // Función para registrar un usuario y un mensaje
 async function registerUserAndMessage(req, res) {
   const { nombre, apellido, email, password, message, rol } = req.body;

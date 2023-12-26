@@ -16,7 +16,7 @@ const createHash = (password) => bcrypt.hashSync(password, bcrypt.genSaltSync(10
 */
 const isValidPassword = (user, password) => bcrypt.compareSync(password, user.password);
 
-const PRIVATE_KEY = "coderJsonWebToken";
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "defaultFallbackValue"; // esta tambien en .env
 
 /* 
   La función generateToken crea un token JWT utilizando la librería 'jsonwebtoken'.

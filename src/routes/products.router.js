@@ -1,7 +1,8 @@
-//products.router.js
+// products.router.js
+
 import express from "express";
 import passport from "passport";
-import { initializePassport, checkRole, passportConfig } from "../config/passport.config.js";  // Importa passportConfig también
+import { initializePassport, checkRole } from "../config/passport.config.js";  // Importa las funciones directamente
 import * as ProductController from "../controllers/products.controller.js";
 
 const router = express.Router();
@@ -16,24 +17,25 @@ router.get("/product/:pid", ProductController.getProductById);
 // Actualiza el uso de checkRole en las rutas
 router.post(
   "/api/products",
-  passport.authenticate("current", { session: false }),
-  passportConfig.checkRole(["admin", "premium"]),
+  passport.authenticate("current", { session: false }),  // Autentica utilizando la estrategia "current"
+  checkRole(["admin", "premium"]),  // Verifica el rol del usuario utilizando checkRole
   ProductController.saveProduct
 );
 
+// Actualizar un producto
 router.put(
   "/products/:id",
-  passport.authenticate("current", { session: false }),
-  passportConfig.checkRole("admin"),
+  passport.authenticate("current", { session: false }),  // Autentica utilizando la estrategia "current"
+  checkRole("admin"),  // Verifica que el rol del usuario sea "admin" utilizando checkRole
   ProductController.updateProduct
 );
 
+// Eliminar un producto
 router.delete(
   "/products/:id",
-  passport.authenticate("current", { session: false }),
-  passportConfig.checkRole(["admin", "premium"]),
+  passport.authenticate("current", { session: false }),  // Autentica utilizando la estrategia "current"
+  checkRole(["admin", "premium"]),  // Verifica el rol del usuario utilizando checkRole
   ProductController.deleteProduct
 );
 
-
-export { initializePassport, checkRole };
+export { router as productsRouter };
