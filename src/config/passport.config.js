@@ -152,4 +152,4 @@ function checkRole(roles) {
 }
 
 // Exporta las funciones de inicialización y verificación de roles
-export { initializePassport, checkRole  };
+export { initializePassport, checkRole, PRIVATE_KEY  };

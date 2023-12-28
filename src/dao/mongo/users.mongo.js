@@ -14,22 +14,21 @@ class UserDAO {
         }
     }   
 
-    // Crear un nuevo usuario
     async createUser(userData) {
         const { nombre, apellido, email, password } = userData;
         if (!nombre || !apellido || !email || !password) {
             return { status: "error", error: "Missing data" };
         } 
+    
         try {
             const hashedPassword = await bcrypt.hash(password, 10);
             const usuario = await userModel.create({ nombre, apellido, email, password: hashedPassword });
-            return { message: "User created", user: usuario };
+            return { status: "success", message: "User created", user: usuario };
         } catch (error) {
-            console.error(error);
-            return { status: "error", error: "Error creating user" };
+            console.error("Error creating user:", error);
+            return { status: "error", error: "Error creating user", details: error.message };
         }
     }
-
     // Buscar un usuario por su ID 
     async getUserById(userId) {
         try {

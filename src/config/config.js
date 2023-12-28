@@ -7,16 +7,14 @@ export default {
   mongoUrl: process.env.MONGO_URL,
 };*/
 //config.js
-import { config } from 'dotenv';
-config();
+import dotenv from "dotenv"
 
-const { PERSISTENCE } = process.env;
 
-if (!PERSISTENCE) {
-  console.error("La variable de entorno PERSISTENCE no está configurada.");
-  process.exit(1);
-}
+dotenv.config()
 
 export default {
-  persistence: process.env.PERSISTENCE,
-};
+    port: process.env.PORT,
+    mongoUrl: process.env.MONGO_URL 
+
+}
+

@@ -3,16 +3,13 @@ import { userModel } from "../DAO/mongo/models/user.model.js";
 import { cartModel } from "../DAO/mongo/models/cart.model.js";
 import { messageModel } from "../DAO/mongo/models/messages.model.js";
 import { createHash, isValidPassword, generateToken, generateTokenRecovery } from '../utils.js';
-import UserDTO from "../DAO/DTO/users.dto.js";
 import bcrypt from "bcrypt";
 import { transporter } from "../routes/mail.router.js";
 import UserDao from "../DAO/mongo/users.mongo.js";
-import logger from "../logger.js";
-
+import logger from "../middleware/logger.js";
 
 const userDao = new UserDao();
 
-// Función para obtener un usuario por correo electrónico
 async function getUserByEmail(email) {
   try {
     const user = await userModel.findOne({ email });
@@ -23,19 +20,16 @@ async function getUserByEmail(email) {
   }
 }
 
-// Función para obtener todos los usuarios
 async function getAllUsers(req, res) {
   try {
     const users = await userModel.find();
     res.send({ result: "success", payload: users });
   } catch (error) {
-    console.error(error);
+    console.log(error);
     res.status(500).json({ error: "Error al obtener usuarios" });
   }
 }
 
-
-// Función para obtener un usuario por ID
 async function getUserById(req, res) {
   const { uid } = req.params;
   try {
@@ -50,28 +44,21 @@ async function getUserById(req, res) {
   }
 }
 
-// Función para crear un nuevo usuario
 async function createUser(req, res) {
-  console.log('Recibiendo solicitud para crear usuario:', req.body);
-
   const { nombre, apellido, email, password } = req.body;
-  console.log('Datos del usuario:', { nombre, apellido, email, password });
-
   if (!nombre || !apellido || !email || !password) {
-    console.log('Faltan datos');
     return res.status(400).json({ status: "error", error: "Faltan datos" });
   }
 
   try {
     const usuario = await userModel.create({ nombre, apellido, email, password });
-    console.log('Usuario creado con éxito:', usuario);
     res.json({ message: "Usuario creado con éxito", user: usuario });
   } catch (error) {
-    console.error('Error al crear el usuario:', error);
-    res.status(500).json({ status: "error", error: "Error al crear el usuario" });
+    console.error(error);
+    res.status(500).json({ status: "error", error: "Error al crear el usuario", details: error.message });
   }
 }
-// Función para registrar un usuario y un mensaje
+
 async function registerUserAndMessage(req, res) {
   const { nombre, apellido, email, password, message, rol } = req.body;
   if (!nombre || !apellido || !email || !password) {
@@ -104,7 +91,6 @@ async function registerUserAndMessage(req, res) {
   }
 }
 
-// Función para iniciar sesión de usuario
 async function loginUser(req, res) {
   const { email, password } = req.body;
   try {
@@ -130,13 +116,11 @@ async function loginUser(req, res) {
   }
 }
 
-// Función para obtener información del usuario
 async function getUserInfo(req, res) {
   const user = req.user;
   res.json({ user });
 }
 
-// Función para cerrar sesión de usuario
 async function logoutUser(req, res) {
   req.session.destroy((error) => {
     if (error) {
@@ -146,7 +130,6 @@ async function logoutUser(req, res) {
   });
 }
 
-// Función para actualizar un usuario
 async function updateUser(req, res) {
   const { uid } = req.params;
   const userToReplace = req.body;
@@ -170,7 +153,6 @@ async function updateUser(req, res) {
   }
 }
 
-// Función para actualizar la contraseña por correo electrónico
 async function updatePasswordByEmail(req, res) {
   const { email, newPassword } = req.body;
 
@@ -188,7 +170,7 @@ async function updatePasswordByEmail(req, res) {
       return res.status(400).json({ error: "La nueva contraseña no puede ser igual a la anterior" });
     }
 
-    const hashedPassword = createHash(newPassword); /* await bcrypt.hash(newPassword, saltRounds); */
+    const hashedPassword = createHash(newPassword);
 
     const userUpdate = await userDao.updatePassword(user._id, hashedPassword);
     if (!userUpdate) {
@@ -202,7 +184,6 @@ async function updatePasswordByEmail(req, res) {
   }
 }
 
-// Función para eliminar un usuario
 async function deleteUser(req, res) {
   const { uid } = req.params;
   try {
@@ -214,9 +195,8 @@ async function deleteUser(req, res) {
   }
 }
 
-// Función para recuperar contraseña por correo
 async function recuperacionCorreo(req, res) {
-  const { email } = req.body; // Suponiendo que el campo de correo electrónico se envía desde el formulario de login
+  const { email } = req.body;
 
   try {
     const usuario = await userDao.getUserByEmail(email);
@@ -224,17 +204,15 @@ async function recuperacionCorreo(req, res) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    // Generar token para expirar correo de reestablecimiento de contraseña
     const token = generateTokenRecovery({ email: usuario.email });
     if (!token) {
       return res.status(500).json({ message: 'Error al generar el token.' });
     }
 
     logger.info("token de recoverypass:" + token);
-    // Construir el enlace de recuperación
+
     const recoveryLink = `http://localhost:8080/reset_password/${token}`;
 
-    // Contenido del email
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -242,7 +220,6 @@ async function recuperacionCorreo(req, res) {
       text: `Hola ${usuario.nombre},\n\nPara restablecer tu contraseña, haz clic en el siguiente enlace:\n\n${recoveryLink}\n\nSi no solicitaste un cambio de contraseña, ignora este mensaje.`,
     };
 
-    // Enviar el correo
     transporter.sendMail(mailOptions, (error) => {
       if (error) {
         console.error(error);
@@ -256,7 +233,6 @@ async function recuperacionCorreo(req, res) {
   }
 }
 
-// Función para cambiar el rol de un usuario
 async function changeRol(req, res) {
   const { uid } = req.params;
   try {
@@ -266,14 +242,13 @@ async function changeRol(req, res) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    // Cambiar el rol según la lógica deseada
     if (user.rol === "user") {
       user.rol = "premium";
     } else if (user.rol === "premium") {
       user.rol = "user";
     }
 
-    const updatedUser = await user.save(); // Guardar el usuario con el nuevo rol
+    const updatedUser = await user.save();
 
     res.json({ message: "Rol de usuario actualizado", user: updatedUser });
   } catch (error) {
@@ -282,7 +257,6 @@ async function changeRol(req, res) {
   }
 }
 
-// Exportar todas las funciones
 export {
   registerUserAndMessage,
   getUserById,
@@ -297,5 +271,5 @@ export {
   recuperacionCorreo,
   updatePasswordByEmail,
   changeRol,
-  userDao,
-};
+  userDao
+  };

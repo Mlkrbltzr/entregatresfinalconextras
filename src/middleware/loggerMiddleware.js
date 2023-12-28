@@ -1,6 +1,6 @@
 //loggerMiddleware.js
 import winston from 'winston';
-import logger from './logger';
+import logger from './logger.js';
 
 // Middleware que añade el logger a la solicitud y pasa al siguiente middleware
 const loggerMiddleware = (req, res, next) => {

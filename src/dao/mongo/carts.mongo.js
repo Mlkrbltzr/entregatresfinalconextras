@@ -1,4 +1,3 @@
-//carts.mongo.js
 // Importar modelos
 import { cartModel } from "./models/cart.model.js";
 import { productModel } from "./models/products.model.js";
@@ -67,6 +66,11 @@ class CartDao {
                     const productId = productData.productId;
                     const quantity = productData.quantity;
 
+                    // Verificar si la cantidad es un entero positivo
+                    if (!Number.isInteger(quantity) || quantity < 1) {
+                        return { success: false, message: 'La cantidad debe ser un entero positivo' };
+                    }
+
                     // Buscar el producto por ID
                     const product = await productModel.findById(productId);
                     if (!product) {
@@ -100,8 +104,13 @@ class CartDao {
                 return { success: false, message: 'Carrito no encontrado' };
             }
 
+            // Verificar si newQuantity es un entero positivo
+            if (!Number.isInteger(newQuantity) || newQuantity < 1) {
+                return { success: false, message: 'La cantidad debe ser un entero positivo' };
+            }
+
             // Buscar el índice del producto en el carrito
-            const productIndex = cart.products.findIndex(product => product.toString() === productId);
+            const productIndex = cart.products.findIndex(product => product.product.toString() === productId);
             if (productIndex === -1) {
                 return { success: false, message: 'Producto no encontrado en el carrito' };
             }
@@ -159,18 +168,18 @@ class CartDao {
             }
 
             // Buscar el índice del producto en el carrito
-            const productIndex = cart.products.findIndex(product => product.toString() === productId);
+            const productIndex = cart.products.findIndex(product => product.product.toString() === productId);
             if (productIndex === -1) {
                 return { error: 'Producto no encontrado en el carrito' };
             }
 
             // Obtener información del producto a eliminar
             const productToDelete = cart.products[productIndex];
-            const productPrice = productToDelete.price;
+            const productPrice = productToDelete.product.price;
 
             // Restar el precio del producto al total del carrito, si el precio es un número
             if (!isNaN(productPrice)) {
-                cart.total = (cart.total || 0) - productPrice;
+                cart.total = (cart.total || 0) - productPrice * productToDelete.quantity;
             }
 
             // Eliminar el producto del carrito
@@ -202,8 +211,8 @@ class CartDao {
         }
     }
 
-       // Obtener los productos de un carrito por su ID
-       async getCartProducts(cartId) {
+    // Obtener los productos de un carrito por su ID
+    async getCartProducts(cartId) {
         try {
             // Buscar el carrito por ID
             const cart = await cartModel.findById(cartId);
@@ -287,4 +296,3 @@ class CartDao {
 
 // Exportar la clase CartDao
 export default CartDao;
-

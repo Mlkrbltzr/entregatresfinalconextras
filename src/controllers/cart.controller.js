@@ -10,7 +10,7 @@ import { PRIVATE_KEY } from "../utils.js";
 import jwt from "jsonwebtoken";
 import { getUserByEmail } from "./users.controller.js";
 import { userDao } from "./users.controller.js";
-import logger from "../logger.js";
+import logger from "../middleware/logger.js";
 
 
 // Se instancia la clase del carrito

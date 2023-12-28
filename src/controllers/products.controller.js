@@ -1,7 +1,7 @@
 //products.controller.js
 import ProductDao from "../DAO/mongo/products.mongo.js"; // Importa el DAO de productos
 import { ProductCreationError } from "../Errors/customErrors.js";
-import logger from "../logger.js";
+import logger from "../middleware/logger.js";
 
 // Se instancia la clase de productos
 const productDao = new ProductDao();
