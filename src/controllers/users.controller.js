@@ -51,7 +51,8 @@ async function createUser(req, res) {
   }
 
   try {
-    const usuario = await userModel.create({ nombre, apellido, email, password });
+    const hashedPassword = createHash(password); // Nueva línea para obtener el hash de la contraseña
+    const usuario = await userModel.create({ nombre, apellido, email, password: hashedPassword });
     res.json({ message: "Usuario creado con éxito", user: usuario });
   } catch (error) {
     console.error(error);
@@ -72,7 +73,8 @@ async function registerUserAndMessage(req, res) {
     }
 
     const newCart = await cartModel.create({ user: null, products: [], total: 0 });
-    const newUser = new userModel({ nombre, apellido, email, password: createHash(password), rol: rol || "user", cartId: newCart._id });
+    const hashedPassword = createHash(password); // Nueva línea para obtener el hash de la contraseña
+    const newUser = new userModel({ nombre, apellido, email, password: hashedPassword, rol: rol || "user", cartId: newCart._id });
     newUser.user = newUser._id;
     await newUser.save();
 
@@ -84,7 +86,7 @@ async function registerUserAndMessage(req, res) {
       await newMessage.save();
     }
 
-    res.redirect("/login"); // no funciona
+    res.redirect("/login");
   } catch (error) {
     console.error(error);
     res.status(500).json({ status: "error", error: "Error al guardar usuario y mensaje" });
@@ -96,8 +98,14 @@ async function loginUser(req, res) {
   try {
     const user = await userModel.findOne({ email });
 
+    // Agrega logs para depuración
+    console.log("Contraseña almacenada en la base de datos:", user.password);
+    console.log("Contraseña proporcionada en la solicitud:", password);
+
     if (!user || !isValidPassword(user, password)) {
       logger.error("Usuario o contraseña incorrecta");
+      console.log("User:", user);
+      console.log("isValidPassword:", isValidPassword(user, password));
       return res.status(401).json({ message: "Usuario o contraseña incorrecta" });
     }
 
@@ -163,14 +171,25 @@ async function updatePasswordByEmail(req, res) {
       return res.status(400).json({ error: "No se encontró el usuario" });
     }
 
+    // Agrega logs para depuración
+    console.log("Email del usuario:", user.email);
+    console.log("Hash almacenado en la base de datos:", user.password);
+
     // Comparar la nueva contraseña con la anterior
     const matchOldPassword = await bcrypt.compare(newPassword, user.password);
-    console.log(matchOldPassword);
+    console.log("¿La nueva contraseña coincide con la anterior?", matchOldPassword);
+
     if (matchOldPassword) {
       return res.status(400).json({ error: "La nueva contraseña no puede ser igual a la anterior" });
     }
 
+    // Agrega un log para depuración
+    console.log("Nueva contraseña antes de generar el hash:", newPassword);
+
     const hashedPassword = createHash(newPassword);
+
+    // Agrega un log para depuración
+    console.log("Nueva contraseña después de generar el hash:", hashedPassword);
 
     const userUpdate = await userDao.updatePassword(user._id, hashedPassword);
     if (!userUpdate) {
@@ -272,4 +291,4 @@ export {
   updatePasswordByEmail,
   changeRol,
   userDao
-  };
+};

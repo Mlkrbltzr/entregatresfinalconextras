@@ -2,7 +2,11 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
 const createHash = (password) => bcrypt.hashSync(password, bcrypt.genSaltSync(10));
-const isValidPassword = (user, password) => bcrypt.compareSync(password, user.password);
+
+const isValidPassword = (user, password) => {
+  const hashedPassword = createHash(password);
+  return bcrypt.compareSync(hashedPassword, user.password);
+};
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "defaultFallbackValue";
 
