@@ -108,10 +108,13 @@ const initializePassport = () => {
       },
       async (payload, done) => {
         try {
+          console.log("Payload en estrategia 'current':", payload);
           const user = await userModel.findOne({ email: payload.user.email });
+          console.log("Usuario encontrado:", user);
+  
           if (!user) {
+            console.log("Usuario no encontrado, se niega el acceso");
             // Usuario no encontrado, se niega el acceso
-            console.log("akiii");
             return done(null, false);
           }
 
@@ -137,6 +140,8 @@ const initializePassport = () => {
 // Middleware para verificar roles
 function checkRole(roles) {
   return function (req, res, next) {
+    console.log("Usuario en la ruta protegida:", req.user); // Agregamos esta línea
+
     const user = req.user; // El objeto UserDTO almacenado por Passport en req.user
 
     if (user && roles.includes(user.rol)) {

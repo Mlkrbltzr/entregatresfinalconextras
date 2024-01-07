@@ -99,8 +99,8 @@ async function loginUser(req, res) {
     const user = await userModel.findOne({ email });
 
     // Agrega logs para depuración
-    console.log("Contraseña almacenada en la base de datos:", user.password);
     console.log("Contraseña proporcionada en la solicitud:", password);
+    console.log("Contraseña almacenada en la base de datos:", user.password);
 
     if (!user || !isValidPassword(user, password)) {
       logger.error("Usuario o contraseña incorrecta");
@@ -123,6 +123,7 @@ async function loginUser(req, res) {
     res.status(500).json({ error: "Error al ingresar " + error.message });
   }
 }
+
 
 async function getUserInfo(req, res) {
   const user = req.user;

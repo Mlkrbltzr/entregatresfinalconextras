@@ -1,11 +1,35 @@
+// utils.js
+
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
-const createHash = (password) => bcrypt.hashSync(password, bcrypt.genSaltSync(10));
 
+const createHash = (password) => bcrypt.hashSync(password, 10);
+// Modificamos createHash para eliminar el uso de genSaltSync
 const isValidPassword = (user, password) => {
-  const hashedPassword = createHash(password);
-  return bcrypt.compareSync(hashedPassword, user.password);
+  try {
+    if (!user) {
+      console.log("Usuario no encontrado al validar la contraseña");
+      return false;
+    }
+
+    console.log("Contraseña proporcionada en la solicitud:", password);
+    console.log("Contraseña almacenada en la base de datos:", user.password);
+    console.log("Longitud de la contraseña proporcionada:", password.length);
+    console.log("Longitud de la contraseña almacenada:", user.password.length);
+
+   // const isPasswordValid = bcrypt.compareSync(password, user.password);
+   const isValidPassword = (user, password) => bcrypt.compareSync(password, user.password)
+
+    console.log("Contraseña proporcionada después de comparar:", password);
+    console.log("Contraseña almacenada después de comparar:", user.password);
+    console.log("¿La contraseña es válida?", isValidPassword);
+
+    return isValidPassword;
+  } catch (error) {
+    console.error("Error al comparar contraseñas:", error);
+    return false;
+  }
 };
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "defaultFallbackValue";
@@ -51,8 +75,8 @@ const authToken = (req, res, next) => {
 };
 
 export {
-  createHash,
   isValidPassword,
+  createHash,
   generateToken,
   authToken,
   generateTokenRecovery,

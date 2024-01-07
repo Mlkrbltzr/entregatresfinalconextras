@@ -153,6 +153,9 @@ async function addProductsToCart(req, res) {
             throw new AddProductToCart("El carrito no existe", 404);
         }
 
+        // Obtener el usuario del objeto req
+        const user = req.user;
+
         for (const product of products) {
             const { productId, quantity } = product;
             if (quantity < 1) {
