@@ -8,7 +8,6 @@ import { PRIVATE_KEY } from "../utils.js";
 import * as utils from "../utils.js";
 import UserDTO from "../DAO/DTO/users.dto.js";
 
-
 const cookieExtractor = (req) => {
   let token = null;
   if (req && req.cookies) {
@@ -23,12 +22,12 @@ const localStrategy = local.Strategy;
 const initializePassport = () => {
   // Serialización y deserialización de usuarios para la sesión
   passport.serializeUser((user, done) => {
-    done(null, user.id);
+    done(null, user._id); // Cambia user.id por user._id
   });
 
-  passport.deserializeUser(async (email, done) => {
+  passport.deserializeUser(async (id, done) => {
     try {
-      const user = await userModel.findOne({ email });
+      const user = await userModel.findById(id); // Utiliza findById con el _id
       done(null, user);
     } catch (error) {
       return done(error);
