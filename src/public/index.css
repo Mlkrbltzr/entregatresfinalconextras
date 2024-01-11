@@ -33,3 +33,15 @@ body {
         padding: 10px 20px;
         cursor: pointer;
     }
+
+    .success-message {
+        color: green;
+        font-weight: bold;
+        /* Otros estilos según tu preferencia */
+      }
+      
+      .error-message {
+        color: red;
+        font-weight: bold;
+        /* Otros estilos según tu preferencia */
+      }

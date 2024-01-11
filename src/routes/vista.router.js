@@ -15,28 +15,34 @@ const PRODUCTS_PER_PAGE = 10;
 
 router.get("/", async (req, res) => {
     try {
+        // Leer el archivo JSON y mostrar la vista home
         const contenidoJson = await fs.readFile("products.json", "utf-8");
         const productos = JSON.parse(contenidoJson);
 
-        console.log("alo");
-        res.render("home", { /* productos */ });
+        console.log("Leyendo el archivo JSON y mostrando la vista home...");
+        
+        // Actualizado: Pasa los productos al render
+    res.render("home", { /* productos */ });
     } catch (error) {
-        console.log("error al leer el archivo JSON:", error);
+        console.log("Error al leer el archivo JSON:", error);
+        res.status(500).send("Error al cargar la vista");
     }
 });
 
 router.get("/register", async (req, res) => {
     try {
+        console.log("Renderizando la vista register...");
         res.render("register");
     } catch (error) {
+        console.log("Error al cargar la página de registro:", error);
         res.status(500).json({ message: "Error al cargar la página" });
     }
 });
 
 router.get("/allproducts", passport.authenticate("current", { session: false }), async (req, res) => {
     try {
-        const nombre = req.user.nombre;
-        console.log(nombre);
+        console.log("Renderizando la vista de todos los productos...");
+        const user = req.user;  // Cambiado: Obtén el usuario directamente de req.user
 
         const page = parseInt(req.query.page) || 1;
         const products = await productModel.find().limit(PRODUCTS_PER_PAGE).lean();
@@ -47,6 +53,7 @@ router.get("/allproducts", passport.authenticate("current", { session: false }),
         const prevLink = page > 1;
         const nextLink = page < totalPages;
 
+        // Utiliza las propiedades del objeto user directamente
         res.render("products", {
             productos: products,
             page,
@@ -55,7 +62,10 @@ router.get("/allproducts", passport.authenticate("current", { session: false }),
             prevPage,
             prevLink,
             nextLink,
-            nombre,
+            nombre: user.nombre,
+            apellido: user.apellido,
+            email: user.email,
+            rol: user.rol,
         });
     } catch (error) {
         console.error("Error al obtener los productos:", error);
@@ -65,9 +75,10 @@ router.get("/allproducts", passport.authenticate("current", { session: false }),
 
 router.get("/login", async (req, res) => {
     try {
+        console.log("Renderizando la vista login...");
         res.render("login", {});
     } catch (error) {
-        console.log("error al acceder a la vista:", error);
+        console.log("Error al acceder a la vista de login:", error);
     }
 });
 
@@ -75,9 +86,10 @@ router.get("/reset_password/:token", authToken, async (req, res) => {
     try {
         const token = req.params.token;
         console.log("Token recibido:", token);
+        console.log("Renderizando la vista de recuperación de contraseña...");
         res.render("recovery", {});
     } catch (error) {
-        console.log("error al acceder a la vista:", error);
+        console.log("Error al acceder a la vista de recuperación de contraseña:", error);
     }
 });
 
@@ -88,6 +100,7 @@ router.get("/profile", async (req, res) => {
         const email = req.session.emailUsuario;
         const rol = req.session.rolUsuario;
 
+        console.log("Renderizando la vista de perfil...");
         res.render("profile", {
             nombre: nombre,
             apellido: apellido,
@@ -107,6 +120,7 @@ router.get("/cart/detail/:cartId", async (req, res) => {
         const cartDetails = await cartDaoInstance.getCartById(cartId);
         console.log("Cart Details:", cartDetails);
 
+        console.log("Renderizando la vista de detalles del carrito...");
         res.render("cartDetail", { cart: cartDetails });
     } catch (error) {
         console.error("Error al obtener el carrito:", error);

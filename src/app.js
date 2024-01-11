@@ -7,6 +7,7 @@ import handlebars from 'express-handlebars';
 import mongoose from "mongoose";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import dotenv from "dotenv";
 import loggerMiddleware from "./middleware/loggerMiddleware.js";
 import { initializePassport } from "./config/passport.config.js";
 import passport from "passport";
@@ -17,7 +18,11 @@ import userRouter from "./routes/users.router.js";
 import sessionRouter from "./routes/session.router.js";
 import mailRouter from "./routes/mail.router.js";
 import mockingproducts from "./routes/mocking.router.js";
-import dotenv from "dotenv";
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config(); // Cargar variables de entorno desde el archivo .env
 
@@ -46,7 +51,13 @@ db.once('disconnected', () => {
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:8080",
+    methods: ["GET", "POST"]
+  }
+});
+
 global.io = io;
 
 const PORT = process.env.PORT || 8080;
@@ -57,7 +68,7 @@ app.use(cookieParser());
 app.use(loggerMiddleware);
 
 io.on('connection', (socket) => {
-  console.log('Cliente conectado');
+  console.log('Cliente conectado socket');
   socket.emit('conexion-establecida', 'Conexión exitosa con el servidor de Socket.IO');
   socket.on('disconnect', () => {
     console.log('Cliente desconectado');
@@ -100,10 +111,10 @@ app.use("/", mockingproducts);
 app.engine("handlebars", handlebars.engine());
 
 app.set("view engine", "handlebars");
-//Usa la carpeta views como carpeta de vistas
-app.set("views", path.join(process.cwd(), "views"));//Archivos dentro de la carpeta public
+// Usa __dirname directamente para obtener la carpeta de vistas
+app.set("views", path.join(__dirname, "views"));
 
-app.use(express.static(new URL("public", import.meta.url).pathname));
+app.use(express.static(path.join(__dirname, "public")));
 
 server.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);

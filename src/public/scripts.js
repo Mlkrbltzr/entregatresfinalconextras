@@ -1,6 +1,7 @@
-//scripts.js
 // Conectar al servidor de socket.io
-const socket = io();
+const socket = io({
+  withCredentials: true, // Habilita el envío de cookies con las solicitudes
+});
 
 // Manejar evento de conexión establecida
 socket.on('conexion-establecida', (mensaje) => {
@@ -9,9 +10,9 @@ socket.on('conexion-establecida', (mensaje) => {
 
 // Manejar evento de nuevo producto
 socket.on('newProduct', (data) => {
-  console.log(data);
+  console.log('Nuevo producto:', data);
   const productsElements = document.getElementById("products");
-  console.log(productsElements);
+  console.log('Lista de productos:', productsElements);
   const productElement = document.createElement('li');
   productElement.innerHTML = `${data.title} - ${data.description}`;
   productsElements.appendChild(productElement);
@@ -19,19 +20,27 @@ socket.on('newProduct', (data) => {
 
 // Manejar evento de eliminar producto
 socket.on('deleteProduct', (id) => {
-  console.log(id);
-  const productElement = document.getElementById(id).remove();
-  console.log(productElement);
+  console.log('Eliminar producto:', id);
+  const productElement = document.getElementById(id);
+  if (productElement) {
+    productElement.remove();
+    console.log('Producto eliminado de la interfaz');
+  } else {
+    console.log('Producto no encontrado en la interfaz');
+  }
 });
 
 // Esperar a que el DOM esté completamente cargado
 document.addEventListener("DOMContentLoaded", () => {
+  console.log('DOM completamente cargado');
+
   // Obtener botones de detalle
   const detalleButtons = document.querySelectorAll(".detalle-button");
   detalleButtons.forEach((button) => {
     // Agregar evento click a los botones de detalle
     button.addEventListener("click", (event) => {
       const productId = event.currentTarget.dataset.productId;
+      console.log('Botón de detalle clicado para el producto ID:', productId);
       window.location.href = `/product/${productId}`;
     });
   });
@@ -51,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (userResponse.ok) {
         const userData = await userResponse.json();
+        console.log('ID del carrito del usuario:', userData.cartId);
         return userData.cartId;
       } else {
         const errorData = await userResponse.json();
@@ -69,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const carritoId = await obtenerIdCarrito();
         if (carritoId) {
+          console.log('Redirigiendo a la página de detalles del carrito:', carritoId);
           window.location.href = `/cart/detail/${carritoId}`;
         } else {
           console.error("No se pudo obtener el ID del carrito.");
@@ -96,7 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // Verificar si el campo de mensaje está vacío
       const datos = { nombre, apellido, email, password, message };
 
-      // Enviar los datos del formulario
       try {
         const response = await fetch("/Register", {
           method: "POST",
@@ -104,19 +114,25 @@ document.addEventListener("DOMContentLoaded", () => {
           body: JSON.stringify(datos)
         });
 
-        if (response.ok) {
-          alert("Usuario y mensaje guardados con éxito");
-          formulario.reset();
-        } else {
+        if (!response.ok) {
+          const errorData = await response.json();
+
           if (response.status === 400) {
-            alert("El correo ya está registrado");
+            showError("El correo ya está registrado");
           } else {
-            alert("Error al guardar el usuario y el mensaje");
+            showError("Error al guardar el usuario y el mensaje");
           }
+
+          console.error('Error durante la solicitud:', errorData);
+          return;
         }
+
+        showSuccess("Usuario y mensaje guardados con éxito");
+        console.log('Formulario de registro enviado con éxito');
+        formulario.reset();
       } catch (error) {
-        console.error(error);
-        alert("Error al registrarse");
+        console.error('Error durante la solicitud:', error);
+        showError('Hubo un error durante la solicitud. Por favor, inténtalo de nuevo más tarde.');
       }
     });
   }
@@ -156,10 +172,9 @@ document.addEventListener("DOMContentLoaded", () => {
           }
           throw new Error('Error al actualizar la contraseña');
         }
-
         const data = await response.json();
         alert("Contraseña actualizada correctamente");
-        console.log(data);
+        console.log('Contraseña actualizada correctamente:', data);
       } catch (error) {
         // Manejar errores
         console.error('Error:', error.message);
@@ -167,9 +182,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-/*Evento conexion-establecida: Imprime un mensaje cuando la conexión con el servidor se establece correctamente.
-Evento newProduct: Imprime datos del nuevo producto y agrega una entrada en la lista de productos en la interfaz.
-Evento deleteProduct: Elimina un producto de la interfaz basándose en su ID.
-Evento DOMContentLoaded: Contiene una serie de interacciones del usuario, como redirecciones al
-hacer clic en botones, obtener el ID del carrito del usuario y enviar formularios (registro y cambio de contraseña).
-además, maneja eventos de socket para actualizar la interfaz en tiempo real cuando ocurren ciertos eventos del servidor.*/

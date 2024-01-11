@@ -10,6 +10,11 @@ import logger from "../middleware/logger.js";
 
 const userDao = new UserDao();
 
+/**
+ * Obtener un usuario por correo electrónico.
+ * @param {string} email - Correo electrónico del usuario.
+ * @returns {Promise<Object|null>} - Objeto del usuario o null si no se encuentra.
+ */
 async function getUserByEmail(email) {
   try {
     const user = await userModel.findOne({ email });
@@ -20,6 +25,11 @@ async function getUserByEmail(email) {
   }
 }
 
+/**
+ * Obtener todos los usuarios.
+ * @param {Object} req - Objeto de solicitud.
+ * @param {Object} res - Objeto de respuesta.
+ */
 async function getAllUsers(req, res) {
   try {
     const users = await userModel.find();
@@ -30,6 +40,11 @@ async function getAllUsers(req, res) {
   }
 }
 
+/**
+ * Obtener un usuario por ID.
+ * @param {Object} req - Objeto de solicitud.
+ * @param {Object} res - Objeto de respuesta.
+ */
 async function getUserById(req, res) {
   const { uid } = req.params;
   try {
@@ -44,6 +59,11 @@ async function getUserById(req, res) {
   }
 }
 
+/**
+ * Crear un nuevo usuario.
+ * @param {Object} req - Objeto de solicitud.
+ * @param {Object} res - Objeto de respuesta.
+ */
 async function createUser(req, res) {
   const { nombre, apellido, email, password } = req.body;
   if (!nombre || !apellido || !email || !password) {
@@ -51,7 +71,8 @@ async function createUser(req, res) {
   }
 
   try {
-    const hashedPassword = createHash(password); // Nueva línea para obtener el hash de la contraseña
+    // Mejora: Obtener el hash de la contraseña mediante la función createHash
+    const hashedPassword = createHash(password);
     const usuario = await userModel.create({ nombre, apellido, email, password: hashedPassword });
     res.json({ message: "Usuario creado con éxito", user: usuario });
   } catch (error) {
@@ -60,6 +81,11 @@ async function createUser(req, res) {
   }
 }
 
+/**
+ * Registrar un nuevo usuario y mensaje.
+ * @param {Object} req - Objeto de solicitud.
+ * @param {Object} res - Objeto de respuesta.
+ */
 async function registerUserAndMessage(req, res) {
   const { nombre, apellido, email, password, message, rol } = req.body;
   if (!nombre || !apellido || !email || !password) {
@@ -72,20 +98,28 @@ async function registerUserAndMessage(req, res) {
       return res.status(400).json({ status: "error", error: "El correo ya existe" });
     }
 
+    // Crear un nuevo carrito
     const newCart = await cartModel.create({ user: null, products: [], total: 0 });
-    const hashedPassword = createHash(password); // Nueva línea para obtener el hash de la contraseña
+    
+    // Mejora: Obtener el hash de la contraseña mediante la función createHash
+    const hashedPassword = createHash(password);
+    
+    // Crear un nuevo usuario
     const newUser = new userModel({ nombre, apellido, email, password: hashedPassword, rol: rol || "user", cartId: newCart._id });
     newUser.user = newUser._id;
     await newUser.save();
 
+    // Asignar el nuevo usuario al carrito
     newCart.user = newUser._id;
     await newCart.save();
 
+    // Guardar el mensaje si está presente
     if (message) {
       const newMessage = new messageModel({ user: newUser._id, message });
       await newMessage.save();
     }
 
+    // Redirigir a la página de inicio de sesión
     res.redirect("/login");
   } catch (error) {
     console.error(error);
@@ -93,15 +127,22 @@ async function registerUserAndMessage(req, res) {
   }
 }
 
+/**
+ * Iniciar sesión del usuario.
+ * @param {Object} req - Objeto de solicitud.
+ * @param {Object} res - Objeto de respuesta.
+ */
 async function loginUser(req, res) {
   const { email, password } = req.body;
   try {
+    // Buscar el usuario por correo electrónico
     const user = await userModel.findOne({ email });
 
-    // Agrega logs para depuración
+    // Agregar logs para depuración
     console.log("Contraseña proporcionada en la solicitud:", password);
     console.log("Contraseña almacenada en la base de datos:", user.password);
 
+    // Verificar usuario y contraseña
     if (!user || !isValidPassword(user, password)) {
       logger.error("Usuario o contraseña incorrecta");
       console.log("User:", user);
@@ -109,21 +150,28 @@ async function loginUser(req, res) {
       return res.status(401).json({ message: "Usuario o contraseña incorrecta" });
     }
 
+    // Generar token de autenticación
     const token = generateToken({ email: user.email, nombre: user.nombre, apellido: user.apellido, rol: user.rol });
-    res.cookie("token", token, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
+    
+    // Configurar la cookie del token
+    res.cookie("token", token, { httpOnly: true, maxAge: 6 * 60 * 60 * 1000 });
 
+    // Obtener el carrito del usuario
     const userCart = await cartModel.findById(user.cartId);
 
+    // Logs informativos
     logger.info("Inicio de sesión exitoso para el usuario: " + user.email);
     logger.info("Token generado para el usuario: " + token);
-    logger.info("rol del usuario: " + user.rol);
+    logger.info("Rol del usuario: " + user.rol);
 
+    // Respuesta exitosa
     res.status(200).json({ token, userCart });
   } catch (error) {
-    res.status(500).json({ error: "Error al ingresar " + error.message });
+    // Manejar errores
+    console.error("Error al iniciar sesión:", error);
+    res.status(500).json({ error: "Error al iniciar sesión " + error.message });
   }
 }
-
 
 async function getUserInfo(req, res) {
   const user = req.user;
@@ -135,7 +183,7 @@ async function logoutUser(req, res) {
     if (error) {
       return res.json({ status: "Error al desconectarse", body: error });
     }
-    res.redirect("../../login");
+    res.redirect("/login");
   });
 }
 

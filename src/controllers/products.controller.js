@@ -1,5 +1,7 @@
-//products.controller.js
-import ProductDao from "../DAO/mongo/products.mongo.js"; // Importa el DAO de productos
+// products.controller.js
+
+// Importa la clase ProductDao desde tu archivo
+import ProductDao from "../DAO/mongo/products.mongo.js";
 import { ProductCreationError } from "../Errors/customErrors.js";
 import logger from "../middleware/logger.js";
 
@@ -21,8 +23,8 @@ export const getProducts = async (req, res) => {
         // Productos paginados desde el DAO (Data Access Object). El DAO realiza una consulta a la base de datos para obtener los productos según las opciones proporcionadas.
         const result = await productDao.getPaginatedProducts(options);
 
-        // Condición: si NO encuentra los productos, retorna un error 
-        if (!result.products.length) {
+        // Verifica si result es undefined o la propiedad products no está definida
+        if (!result || !result.products) {
             return res.status(404).json({ message: "Productos no encontrados" });
         }
 
@@ -36,9 +38,10 @@ export const getProducts = async (req, res) => {
         // Si todo sale mal, muestra el error máximo
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "Error al obtener productos" });
+        res.status(500).json({ message: "Error al obtener productos", error: error.message });
     }
 };
+
 
 // Obtener un producto específico según ID 
 export const getProductById = async (req, res) => {
